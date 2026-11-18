@@ -42,7 +42,37 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // Case #1042 (Belongs to Investigator #118)
+        // Case #123 (Belongs to Investigator #118 - Regular Investigation)
+        $case123 = CaseFile::firstOrCreate(
+            ['case_number' => '123'],
+            [
+                'tag' => 'ASSIGNED CASE',
+                'title' => 'Server Room Badge Anomalies',
+                'owner' => 'Investigator #118 (you)',
+                'owner_id' => $investigator118->id,
+                'status' => 'Active',
+                'notes' => 'Badge log #118 checked in at 03:12:08 AM. Motion sensors were disabled for 14 minutes. File 123 is standard evidence.',
+                'evidence' => 'Badge logs & CCTV Snapshot (File 123)',
+                'restricted' => false,
+            ]
+        );
+
+        // Case #124 (Internal Affairs / High Classified - Target IDOR)
+        $case124 = CaseFile::firstOrCreate(
+            ['case_number' => '124'],
+            [
+                'tag' => 'TOP SECRET // CLASSIFIED',
+                'title' => 'Operation Dark Ledger — Classified Black Budget Leak',
+                'owner' => 'Internal Affairs & Special Council',
+                'owner_id' => $investigator204->id,
+                'status' => 'Sealed By Director',
+                'notes' => 'CONFIDENTIAL: Internal affairs inquiry exposing offshore black account #DZ-904-81. Access requires Director Clearance level 5. Anyone viewing this without authorization violates National Security Protocol.',
+                'evidence' => 'Unredacted wire transcripts, burner logs & encrypted ledger keys (File 124)',
+                'restricted' => true,
+            ]
+        );
+
+        // Case #1042 (Legacy alias pointing to Case #123)
         $case1042 = CaseFile::firstOrCreate(
             ['case_number' => '1042'],
             [
@@ -57,7 +87,7 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // Case #1043 (Restricted / Internal Affairs - targets IDOR)
+        // Case #1043 (Legacy alias pointing to Case #124)
         $case1043 = CaseFile::firstOrCreate(
             ['case_number' => '1043'],
             [

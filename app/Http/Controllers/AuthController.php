@@ -30,20 +30,29 @@ class AuthController extends Controller
                     $matchedUser = $results[0];
                     return response()->json([
                         'success' => true,
-                        'message' => 'Simulated result: logged in as admin. Your input changed the SQL query structure.',
+                        'message' => 'Simulated result: logged in via SQL injection. Query execution manipulated.',
                         'user' => [
                             'id' => $matchedUser->id,
                             'name' => $matchedUser->name,
                             'email' => $matchedUser->email,
                         ],
+                        'table_dump' => array_map(function ($row) {
+                            return [
+                                'id' => $row->id,
+                                'name' => $row->name,
+                                'email' => $row->email,
+                                'password_hash' => $row->password,
+                            ];
+                        }, $results),
+                        'records_extracted' => count($results),
                         'query_executed' => $rawQuery,
-                        'vulnerability' => 'SQLi (CWE-89)',
+                        'vulnerability' => 'SQLi (CWE-89) - UNION / Boolean based query traversal',
                     ]);
                 }
 
                 return response()->json([
                     'success' => false,
-                    'message' => "Simulated result: no user matches. Try an email that makes the WHERE clause always true: ' OR '1'='1",
+                    'message' => "Simulated result: no records returned. Try: ' OR '1'='1' # or ' UNION SELECT id, name, email, password FROM users #",
                     'query_executed' => $rawQuery,
                 ], 401);
             } catch (\Throwable $e) {
