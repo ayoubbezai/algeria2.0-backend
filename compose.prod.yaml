@@ -64,17 +64,18 @@ services:
     env_file:
       - .env.production
     environment:
-      MYSQL_DATABASE: ${DB_DATABASE:?Set DB_DATABASE}
-      MYSQL_USER: ${DB_USERNAME:?Set DB_USERNAME}
-      MYSQL_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Set DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE:-casefile404}
+      MYSQL_USER: ${DB_USERNAME:-casefile_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-casefile_db_pass_2026!}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-casefile_root_pass_2026!}
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} || exit 0"]
       interval: 5s
       timeout: 5s
-      retries: 20
+      retries: 30
+      start_period: 20s
 
   redis:
     container_name: ${APP_NAME}_${APP_ENV}_redis

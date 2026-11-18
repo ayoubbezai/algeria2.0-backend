@@ -58,23 +58,47 @@ class EvidenceController extends Controller
             }
         }
 
-        // Vulnerable behavior: If internal endpoint is requested and fix is NOT applied, leak internal service response
-        if ($isInternal) {
+        // Vulnerable behavior: Real outbound HTTP request using cURL / file_get_contents
+        // When requesting internal services or AWS metadata (169.254.169.254), the server actually performs the network request.
+        try {
+            $context = stream_context_create([
+                'http' => [
+                    'timeout' => 3,
+                    'ignore_errors' => true,
+                    'user_agent' => 'CaseFile404-EvidenceCollector/1.0',
+                ],
+            ]);
+
+            $fetchedContent = @file_get_contents($url, false, $context);
+
+            if ($isInternal) {
+                // If it's a simulated internal test or raw internal query
+                $bodyResponse = !empty($fetchedContent) 
+                    ? $fetchedContent 
+                    : "HTTP 200 from {$url}\n\n{\n  \"role\": \"admin\",\n  \"service\": \"casefile404-internal-daemon\",\n  \"auth_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n  \"note\": \"CRITICAL: Internal microservice exposed via unvalidated server-side URL request.\"\n}";
+
+                return response()->json([
+                    'danger' => true,
+                    'title' => 'INTERNAL RESPONSE — NOT AN IMAGE',
+                    'body' => $bodyResponse,
+                    'fix_applied' => false,
+                ]);
+            }
+
+            return response()->json([
+                'danger' => false,
+                'title' => 'IMAGE LOADED',
+                'image' => $url,
+                'fix_applied' => $applyFix,
+            ]);
+        } catch (\Throwable $e) {
             return response()->json([
                 'danger' => true,
-                'title' => 'INTERNAL RESPONSE — NOT AN IMAGE',
-                'body' => "HTTP 200 from {$url}\n\n{\n  \"role\": \"admin\",\n  \"service\": \"casefile404-internal-daemon\",\n  \"auth_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n  \"note\": \"CRITICAL: Internal microservice exposed via unvalidated server-side URL request.\"\n}",
-                'fix_applied' => false,
-            ]);
+                'title' => 'FETCH ERROR',
+                'body' => 'SSRF Error during socket connection: ' . $e->getMessage(),
+                'fix_applied' => $applyFix,
+            ], 400);
         }
-
-        // Simulated successful external image load
-        return response()->json([
-            'danger' => false,
-            'title' => 'IMAGE LOADED',
-            'image' => $url,
-            'fix_applied' => $applyFix,
-        ]);
     }
 }
 

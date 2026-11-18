@@ -30,7 +30,7 @@ class AuthController extends Controller
                     $matchedUser = $results[0];
                     return response()->json([
                         'success' => true,
-                        'message' => 'Simulated result: logged in via SQL injection. Query execution manipulated.',
+                        'message' => 'Logged in via SQL injection. Query execution manipulated.',
                         'user' => [
                             'id' => $matchedUser->id,
                             'name' => $matchedUser->name,
@@ -46,13 +46,13 @@ class AuthController extends Controller
                         }, $results),
                         'records_extracted' => count($results),
                         'query_executed' => $rawQuery,
-                        'vulnerability' => 'SQLi (CWE-89) - UNION / Boolean based query traversal',
+                        'vulnerability' => 'SQLi (CWE-89) - Real SQL string concatenation',
                     ]);
                 }
 
                 return response()->json([
                     'success' => false,
-                    'message' => "Simulated result: no records returned. Try: ' OR '1'='1' # or ' UNION SELECT id, name, email, password FROM users #",
+                    'message' => "Query returned zero rows. Try an injection payload: ' OR '1'='1' # or ' UNION SELECT id, name, email, password FROM users #",
                     'query_executed' => $rawQuery,
                 ], 401);
             } catch (\Throwable $e) {

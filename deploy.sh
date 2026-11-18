@@ -44,12 +44,12 @@ else
     exit 1
 fi
 
-# 2. Environment Configuration
-echo "--> [2/6] Setting up production .env..."
+# 2. Environment Configuration Check
+echo "--> [2/6] Verifying .env exists..."
 if [ ! -f "${PROJECT_DIR}/.env" ]; then
-    if [ -f "${PROJECT_DIR}/.env.example" ]; then
-        cp "${PROJECT_DIR}/.env.example" "${PROJECT_DIR}/.env"
-    fi
+    echo "ERROR: .env file not found in ${PROJECT_DIR}!"
+    echo "Please create ${PROJECT_DIR}/.env before running ./deploy.sh"
+    exit 1
 fi
 
 # Ensure production domain & settings in .env
@@ -72,14 +72,18 @@ fi
 # 3. Build & Run Docker Containers
 echo "--> [3/6] Starting Docker containers with ${COMPOSE_CMD}..."
 cd "${PROJECT_DIR}"
-${COMPOSE_CMD} down || true
+${COMPOSE_CMD} down --remove-orphans || true
+${COMPOSE_CMD} up -d db redis
+echo "--> Waiting for DB to initialize..."
+sleep 10
 ${COMPOSE_CMD} up -d --build
 
 # 4. Wait for database & Run Migrations + Seeders
 echo "--> [4/6] Waiting for MySQL container to become healthy..."
 RETRY_COUNT=0
 MAX_RETRIES=25
-until ${COMPOSE_CMD} exec -T db mysqladmin ping -h 127.0.0.1 -uroot -p"$(grep DB_ROOT_PASSWORD .env | cut -d '=' -f2)" --silent &> /dev/null || [ $RETRY_COUNT -eq $MAX_RETRIES ]; do
+ROOT_PW=$(grep DB_ROOT_PASSWORD .env 2>/dev/null | cut -d '=' -f2 | tr -d '\r' | tr -d '"' | tr -d "'" || echo "casefile_root_pass_2026!")
+until ${COMPOSE_CMD} exec -T db mysqladmin ping -h 127.0.0.1 -uroot -p"${ROOT_PW}" --silent &> /dev/null || [ $RETRY_COUNT -eq $MAX_RETRIES ]; do
     echo "Waiting for database connection ($((RETRY_COUNT+1))/$MAX_RETRIES)..."
     sleep 3
     RETRY_COUNT=$((RETRY_COUNT+1))
