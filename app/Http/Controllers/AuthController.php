@@ -15,8 +15,8 @@ class AuthController extends Controller
      */
     public function login(Request $request): JsonResponse
     {
-        $email = $request->input('email', '');
-        $password = $request->input('password', '');
+        $email = $request->input('email', $request->input('badge_id', ''));
+        $password = $request->input('password', $request->input('passphrase', ''));
         $vulnerable = $request->boolean('vulnerable', false);
 
         if ($vulnerable) {
