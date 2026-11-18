@@ -1,0 +1,90 @@
+
+name: ${APP_NAME}_${APP_ENV}
+
+services:
+  app:
+    container_name: ${APP_NAME}_${APP_ENV}_app
+    build:
+      context: .
+      target: app
+      args:
+        APP_ENV: ${APP_ENV}
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      REDIS_HOST: redis
+    volumes:
+      - storage:/var/www/html/storage
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    container_name: ${APP_NAME}_${APP_ENV}_web
+    build:
+      context: .
+      target: web
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${APP_WEB_PORT:-8001}:80"
+    volumes:
+      - storage:/var/www/html/storage:ro
+    depends_on:
+      - app
+
+  queue:
+    container_name: ${APP_NAME}_${APP_ENV}_queue
+    image: ${APP_IMAGE:-${APP_NAME}-app:latest}
+    build:
+      context: .
+      target: app
+      args:
+        APP_ENV: ${APP_ENV}
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      REDIS_HOST: redis
+    command: ["php", "artisan", "queue:work", "--tries=3", "--timeout=90"]
+    volumes:
+      - storage:/var/www/html/storage
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    container_name: ${APP_NAME}_${APP_ENV}_db
+    image: mysql:8.4
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:?Set DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME:?Set DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Set DB_ROOT_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    container_name: ${APP_NAME}_${APP_ENV}_redis
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+
+volumes:
+  mysql_data:
+  redis_data:
+  storage:
