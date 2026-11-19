@@ -28,7 +28,9 @@ class AuthController extends Controller
 
                 if (!empty($results)) {
                     $matchedUser = $results[0];
-                    return response()->json([
+                    $isUnionPayload = stripos($email, 'union') !== false || stripos($password, 'union') !== false;
+
+                    $response = [
                         'success' => true,
                         'message' => 'Logged in via SQL injection. Query execution manipulated.',
                         'user' => [
@@ -36,18 +38,24 @@ class AuthController extends Controller
                             'name' => $matchedUser->name,
                             'email' => $matchedUser->email,
                         ],
-                        'table_dump' => array_map(function ($row) {
+                        'query_executed' => $rawQuery,
+                        'vulnerability' => $isUnionPayload ? 'SQLi (CWE-89) - UNION-based Data Exfiltration' : 'SQLi (CWE-89) - Authentication Bypass',
+                    ];
+
+                    // ONLY return the full exfiltrated table dump when UNION injection is performed!
+                    if ($isUnionPayload) {
+                        $response['table_dump'] = array_map(function ($row) {
                             return [
                                 'id' => $row->id,
                                 'name' => $row->name,
                                 'email' => $row->email,
                                 'password_hash' => $row->password,
                             ];
-                        }, $results),
-                        'records_extracted' => count($results),
-                        'query_executed' => $rawQuery,
-                        'vulnerability' => 'SQLi (CWE-89) - Real SQL string concatenation',
-                    ]);
+                        }, $results);
+                        $response['records_extracted'] = count($results);
+                    }
+
+                    return response()->json($response);
                 }
 
                 return response()->json([
